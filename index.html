@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAP Controls Analyst — No-Access Track</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #1F3864; --navy-light: #2C4A80; --teal: #1F7A8C;
+    --amber: #C65911; --amber-light: #E8A15C;
+    --bg: #F6F5F1; --card: #FFFFFF; --ink: #23262B; --grey: #5B6270; --line: #E4E1D8;
+    --midgrey: #D9D9D9; --red: #B02418;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--ink); line-height: 1.55; }
+  h1, h2, h3, .brand { font-family: 'Source Serif 4', Georgia, serif; }
+
+  /* ---------- Sign-in screen ---------- */
+  #signin-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .signin-card { max-width: 420px; width: 100%; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(31,56,100,0.10); overflow: hidden; }
+  .signin-banner { background: var(--navy); padding: 24px 32px; }
+  .signin-banner .brand { color: #fff; font-weight: 700; font-size: 14px; letter-spacing: 0.5px; }
+  .signin-banner .tagline { color: #D9E4EF; font-size: 12px; margin-top: 4px; }
+  .signin-body { padding: 32px; }
+  .signin-body h1 { color: var(--navy); font-size: 22px; margin-bottom: 6px; }
+  .signin-body .sub { color: #666; font-size: 14px; margin-bottom: 22px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; color: var(--navy); margin-bottom: 5px; }
+  .field input { width: 100%; padding: 10px 12px; border: 1px solid var(--midgrey); border-radius: 6px; font-size: 14px; }
+  .field input:focus { outline: none; border-color: var(--teal); }
+  .btn-primary { width: 100%; padding: 11px; background: var(--navy); color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 6px; }
+  .btn-primary:hover { background: #16294a; }
+  .btn-primary:disabled { background: #9aa5b8; cursor: not-allowed; }
+  .error-msg { color: var(--red); font-size: 13px; margin-top: 10px; }
+  .not-enrolled { color: var(--red); font-size: 13px; margin-top: 14px; line-height: 1.5; }
+  .signin-footer { margin-top: 20px; font-size: 12px; color: #999; text-align: center; }
+
+  /* ---------- Console layout ---------- */
+  #console-screen { display: none; height: 100vh; }
+  .app { display: flex; height: 100vh; }
+  .sidebar { width: 300px; background: var(--navy); color: #fff; overflow-y: auto; flex-shrink: 0; display: flex; flex-direction: column; }
+  .sidebar-header { padding: 18px 20px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+  .sidebar-header .brand { font-weight: 700; font-size: 13px; letter-spacing: 0.5px; }
+  .sidebar-header .product { font-size: 15px; color: var(--amber); font-weight: 700; margin-top: 4px; }
+  .sidebar-crosslink { display: block; margin: 10px 14px; padding: 10px 12px; background: var(--amber); color: #fff; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 700; text-align: center; }
+  .sidebar-nav { flex: 1; overflow-y: auto; padding: 10px 0; }
+  .intro-link { padding: 10px 20px; font-size: 13px; font-weight: 700; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.15); color: #fff; }
+  .intro-link:hover, .intro-link.active { background: var(--teal); }
+  .chapter-title { padding: 10px 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; color: #D9E4EF; text-transform: uppercase; cursor: pointer; user-select: none; }
+  .cvu-item { padding: 6px 20px 6px 32px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: #E5EBF3; }
+  .cvu-item:hover { background: rgba(255,255,255,0.08); }
+  .cvu-item.active { background: var(--teal); color: #fff; }
+  .cvu-check { width: 12px; height: 12px; border-radius: 3px; border: 1.5px solid #7C8CA8; flex-shrink: 0; }
+  .cvu-check.done { background: var(--amber); border-color: var(--amber); }
+  .sidebar-footer { padding: 14px 20px; border-top: 1px solid rgba(255,255,255,0.15); font-size: 12px; }
+  .sidebar-footer button { background: transparent; border: 1px solid #7C8CA8; color: #D9E4EF; padding: 6px 10px; border-radius: 5px; font-size: 12px; cursor: pointer; width: 100%; }
+  .sidebar-footer button:hover { border-color: #fff; color: #fff; }
+
+  .main { flex: 1; overflow-y: auto; padding: 36px 48px; max-width: 900px; }
+  .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 0.76rem; color: var(--teal); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+  h1.title { font-size: 1.8rem; margin: 6px 0 4px; color: var(--navy); }
+  .subtitle { color: var(--grey); font-size: 0.9rem; margin-bottom: 22px; }
+
+  section.block { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px 24px; margin-bottom: 16px; }
+  section.block h2 { font-size: 1.0rem; color: var(--navy); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+  section.block h2::before { content: ""; width: 4px; height: 16px; background: var(--teal); border-radius: 2px; display: inline-block; }
+  p { margin: 0 0 10px; font-size: 0.93rem; }
+
+  .exhibit { margin: 12px 0 4px; }
+  .exhibit-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.74rem; color: var(--teal); font-weight: 600; margin-bottom: 6px; }
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; }
+  table.evidence-table { border-collapse: collapse; width: 100%; font-family: 'IBM Plex Mono', monospace; font-size: 0.74rem; white-space: nowrap; }
+  table.evidence-table th { background: var(--navy); color: #fff; text-align: left; padding: 7px 9px; font-weight: 500; }
+  table.evidence-table td { padding: 6px 9px; border-top: 1px solid var(--line); }
+  table.evidence-table tr:nth-child(even) td { background: #FAFAF7; }
+
+  textarea.exercise-input { width: 100%; min-height: 100px; border: 1px solid var(--line); border-radius: 8px; padding: 11px 13px; font-family: 'Inter', sans-serif; font-size: 0.88rem; resize: vertical; }
+  .reveal-btn { background: var(--teal); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.86rem; cursor: pointer; margin-top: 10px; }
+  .reveal-btn:hover { background: #195F6E; }
+  .answer-key { display: none; margin-top: 16px; border-top: 1px dashed var(--line); padding-top: 14px; }
+  .answer-key.show { display: block; }
+  .exception-callout { background: #FFF7EC; border: 1px solid var(--amber-light); border-radius: 8px; padding: 11px 15px; font-size: 0.88rem; margin-bottom: 12px; }
+  .finding-row { margin-bottom: 8px; }
+  .finding-label { display: inline-block; font-weight: 700; color: var(--navy); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .finding-row p { margin: 2px 0 0; }
+
+  .mark-complete-row { margin-top: 20px; display: flex; align-items: center; gap: 12px; }
+  .mark-complete-row button { background: var(--amber); color: #fff; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .mark-complete-row button:hover { background: #a94c0e; }
+  .mark-complete-row button.done { background: #2E7D32; }
+  .mark-complete-row .status { font-size: 13px; color: #666; }
+
+  .nav-buttons { display: flex; justify-content: space-between; margin-top: 22px; gap: 10px; }
+  .nav-buttons button { background: transparent; border: 1px solid var(--line); color: var(--navy); padding: 9px 16px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; cursor: pointer; }
+  .nav-buttons button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .nav-buttons button:not(:disabled):hover { background: #F2F1EB; }
+
+  .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-top: 18px; }
+  .home-card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; cursor: pointer; }
+  .home-card:hover { border-color: var(--teal); }
+  .home-card .n { font-family: 'IBM Plex Mono', monospace; color: var(--teal); font-size: 0.72rem; font-weight: 600; }
+  .home-card h3 { margin: 4px 0 4px; font-size: 0.95rem; color: var(--navy); }
+  .home-card p { font-size: 0.78rem; color: var(--grey); margin: 0; }
+
+  .loading, .empty-state { padding: 60px 0; text-align: center; color: #999; }
+  .completion-banner { background: var(--amber); color: #fff; padding: 16px 20px; border-radius: 10px; margin-top: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+  .completion-banner a { background: #fff; color: var(--amber); text-decoration: none; font-weight: 700; padding: 10px 18px; border-radius: 8px; font-size: 0.86rem; }
+</style>
+</head>
+<body>
+
+<!-- ============ SIGN-IN SCREEN ============ -->
+<div id="signin-screen">
+  <div class="signin-card">
+    <div class="signin-banner">
+      <div class="brand">TIB SYSTEMS LLC</div>
+      <div class="tagline">SAP Controls Analyst — No-Access Track</div>
+    </div>
+    <div class="signin-body">
+      <h1>No-Access Track</h1>
+      <div class="sub">Sign in to your course console.</div>
+      <div class="field"><label>Email</label><input type="email" id="email-input" autocomplete="email" /></div>
+      <div class="field"><label>Password</label><input type="password" id="password-input" autocomplete="current-password" /></div>
+      <button class="btn-primary" id="signin-btn">Sign In</button>
+      <div style="text-align:center; margin-top:12px;">
+        <a href="#" id="forgot-password-link" style="font-size:13px; color:var(--teal); text-decoration:none;">Forgot your password?</a>
+      </div>
+      <div id="signin-error" class="error-msg" style="display:none;"></div>
+      <div id="forgot-password-msg" class="error-msg" style="display:none; color:var(--teal);"></div>
+      <div id="not-enrolled" class="not-enrolled" style="display:none;">
+        We couldn't find an active enrolment for this account. If you've just enrolled, this can take a few minutes to activate — otherwise contact academy@tib-systems.com.
+      </div>
+      <div class="signin-footer">Standalone judgment-first programme — pairs with SAP Controls Mastery.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SET NEW PASSWORD SCREEN (password recovery landing) ============ -->
+<div id="setpw-screen" style="display:none;">
+  <div class="signin-card" style="margin:0 auto; margin-top:15vh;">
+    <div class="signin-banner">
+      <div class="brand">TIB SYSTEMS LLC</div>
+      <div class="tagline">SAP Controls Analyst — No-Access Track</div>
+    </div>
+    <div class="signin-body">
+      <h1>Set a new password</h1>
+      <div class="sub">Choose a new password for your account.</div>
+      <div class="field"><label>New password</label><input type="password" id="new-password-input" autocomplete="new-password" /></div>
+      <div class="field"><label>Confirm new password</label><input type="password" id="confirm-password-input" autocomplete="new-password" /></div>
+      <button class="btn-primary" id="setpw-btn">Set Password</button>
+      <div id="setpw-error" class="error-msg" style="display:none;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONSOLE SCREEN ============ -->
+<div id="console-screen">
+  <div class="app">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">TIB SYSTEMS LLC</div>
+        <div class="product">No-Access Track</div>
+      </div>
+      <a class="sidebar-crosslink" href="https://tib-sap-controls-tutor.vercel.app/" target="_blank" rel="noopener">🎓 SAP Controls Mastery Console →</a>
+      <div class="sidebar-nav" id="sidebar-nav">
+        <div class="loading">Loading curriculum…</div>
+      </div>
+      <div class="sidebar-footer">
+        <div id="user-email" style="margin-bottom:8px; color:#B7C4DA;"></div>
+        <button id="signout-btn">Sign Out</button>
+      </div>
+    </div>
+    <div class="main" id="main-content">
+      <div class="empty-state">Select a chapter from the sidebar to begin.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://blfgwysgekfqhcafofhe.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJsZmd3eXNnZWtmcWhjYWZvZmhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyODY0NDksImV4cCI6MjA5NTg2MjQ0OX0.HPdIMd-X30QBufoL9BVSVte6s_Fc-OOKIq9MbwLrzcI";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let allChapters = [];
+let allCvus = [];
+let cvusByChapter = {};
+let completedCvuIds = new Set();
+let currentUserEmail = null;
+let currentCvuId = null;
+
+const INTRO_HTML = `
+<div class="eyebrow">Part 1 — Before You Start</div>
+<h1 class="title">What Is a Control, Really?</h1>
+<p class="subtitle">Read this first. Every one of the 64 CVUs ahead is a variation on what's explained here.</p>
+<section class="block">
+  <p>Strip away the jargon, and a &ldquo;control&rdquo; is just a checkpoint — a deliberate pause built into a process so that a mistake, an abuse of trust, or a simple oversight gets caught before it turns into real damage.</p>
+  <p>Every control you'll meet in this course is really doing one of four jobs.</p>
+</section>
+<section class="block">
+  <h2>The Four Jobs Every Control Does</h2>
+  <p><strong>1. It exists.</strong> Someone decided, on purpose, that a particular checkpoint was needed.</p>
+  <p><strong>2. It operates.</strong> Someone actually performs the checkpoint, in real life, on a regular basis.</p>
+  <p><strong>3. It gets tested.</strong> Someone independent periodically checks the checkpoint is actually happening.</p>
+  <p><strong>4. It gets fixed when it fails.</strong> Someone documents the hole, assigns it to a person, and closes it.</p>
+  <div class="exception-callout"><strong>Why this matters:</strong> Almost every finding in this course is one of these four jobs quietly not happening.</div>
+</section>
+<section class="block" style="border-color: var(--amber);">
+  <h2>Two Courses, One Path</h2>
+  <p>This is one half of a pair. The other half is <strong>SAP Controls Mastery</strong> — the hands-on course where you practice these same checks inside a live SAP system.</p>
+  <p><a href="https://tib-sap-controls-tutor.vercel.app/" target="_blank" rel="noopener" style="color: var(--amber); font-weight: 700;">→ Open SAP Controls Mastery Console</a></p>
+</section>
+<div class="nav-buttons"><span></span><button onclick="renderHome()">Browse the 15 Chapters →</button></div>
+`;
+
+// ---------------- Auth ----------------
+document.getElementById('signin-btn').addEventListener('click', signIn);
+document.getElementById('password-input').addEventListener('keydown', e => { if (e.key === 'Enter') signIn(); });
+
+document.getElementById('forgot-password-link').addEventListener('click', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email-input').value.trim();
+  const msgEl = document.getElementById('forgot-password-msg');
+  const errEl = document.getElementById('signin-error');
+  errEl.style.display = 'none';
+
+  if (!email) {
+    msgEl.style.color = 'var(--red)';
+    msgEl.textContent = 'Enter your email above first, then click "Forgot your password?" again.';
+    msgEl.style.display = 'block';
+    return;
+  }
+
+  const link = document.getElementById('forgot-password-link');
+  link.textContent = 'Sending…';
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin,
+  });
+  link.textContent = 'Forgot your password?';
+
+  msgEl.style.color = 'var(--teal)';
+  msgEl.textContent = 'If that email has an account, a password reset link is on its way. Check your inbox.';
+  msgEl.style.display = 'block';
+});
+
+async function signIn() {
+  const email = document.getElementById('email-input').value.trim();
+  const password = document.getElementById('password-input').value;
+  const btn = document.getElementById('signin-btn');
+  const errEl = document.getElementById('signin-error');
+  const notEnrolledEl = document.getElementById('not-enrolled');
+  errEl.style.display = 'none';
+  notEnrolledEl.style.display = 'none';
+  if (!email || !password) { errEl.textContent = 'Enter your email and password.'; errEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  btn.disabled = false; btn.textContent = 'Sign In';
+  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+
+  const { data: enrollment } = await sb.from('noaccess_enrollments').select('email').eq('email', email).maybeSingle();
+  if (!enrollment) {
+    notEnrolledEl.style.display = 'block';
+    await sb.auth.signOut();
+    return;
+  }
+  currentUserEmail = email;
+  await enterConsole();
+}
+
+document.getElementById('signout-btn').addEventListener('click', async () => {
+  await sb.auth.signOut();
+  location.reload();
+});
+
+let passwordRecoveryActive = false;
+
+sb.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    passwordRecoveryActive = true;
+    document.getElementById('signin-screen').style.display = 'none';
+    document.getElementById('console-screen').style.display = 'none';
+    document.getElementById('setpw-screen').style.display = 'block';
+  }
+});
+
+document.getElementById('setpw-btn').addEventListener('click', async () => {
+  const pw1 = document.getElementById('new-password-input').value;
+  const pw2 = document.getElementById('confirm-password-input').value;
+  const errEl = document.getElementById('setpw-error');
+  errEl.style.display = 'none';
+
+  if (!pw1 || pw1.length < 8) {
+    errEl.textContent = 'Password must be at least 8 characters.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (pw1 !== pw2) {
+    errEl.textContent = 'Passwords do not match.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('setpw-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const { error } = await sb.auth.updateUser({ password: pw1 });
+  btn.disabled = false; btn.textContent = 'Set Password';
+
+  if (error) {
+    errEl.textContent = error.message;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  await sb.auth.signOut();
+  document.getElementById('setpw-screen').style.display = 'none';
+  document.getElementById('signin-screen').style.display = 'block';
+  const notice = document.getElementById('forgot-password-msg');
+  notice.style.color = 'var(--teal)';
+  notice.textContent = 'Password updated — sign in with your new password.';
+  notice.style.display = 'block';
+});
+
+async function checkExistingSession() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (passwordRecoveryActive) return;
+  if (session && session.user && session.user.email) {
+    const { data: enrollment } = await sb.from('noaccess_enrollments').select('email').eq('email', session.user.email).maybeSingle();
+    if (enrollment) {
+      currentUserEmail = session.user.email;
+      await enterConsole();
+      return;
+    }
+  }
+}
+
+async function enterConsole() {
+  document.getElementById('signin-screen').style.display = 'none';
+  document.getElementById('console-screen').style.display = 'block';
+  document.getElementById('user-email').textContent = currentUserEmail;
+  await loadCurriculum();
+  await loadProgress();
+  renderSidebar();
+  renderHome();
+}
+
+// ---------------- Data loading ----------------
+async function loadCurriculum() {
+  const { data: chapters, error: chErr } = await sb.from('noaccess_chapters').select('*').order('chapter_num', { ascending: true });
+  const { data: cvus, error: cvErr } = await sb.from('noaccess_cvus').select('*').order('chapter_num', { ascending: true }).order('sort_order', { ascending: true });
+  if (chErr || cvErr) {
+    document.getElementById('sidebar-nav').innerHTML = `<div class="loading">Error loading curriculum.</div>`;
+    return;
+  }
+  allChapters = chapters || [];
+  allCvus = cvus || [];
+  cvusByChapter = {};
+  allCvus.forEach(c => {
+    cvusByChapter[c.chapter_num] = cvusByChapter[c.chapter_num] || [];
+    cvusByChapter[c.chapter_num].push(c);
+  });
+}
+
+async function loadProgress() {
+  const { data } = await sb.from('noaccess_progress').select('cvu_id').eq('email', currentUserEmail);
+  completedCvuIds = new Set((data || []).map(r => r.cvu_id));
+}
+
+async function markComplete(cvuId) {
+  await sb.from('noaccess_progress').insert({ email: currentUserEmail, cvu_id: cvuId });
+  completedCvuIds.add(cvuId);
+  renderSidebar();
+  selectCvu(cvuId);
+}
+
+// ---------------- Rendering ----------------
+function renderSidebar() {
+  const nav = document.getElementById('sidebar-nav');
+  nav.innerHTML = '';
+
+  const introEl = document.createElement('div');
+  introEl.className = 'intro-link';
+  introEl.id = 'link-intro';
+  introEl.textContent = '📖 What Is a Control, Really?';
+  introEl.onclick = () => { currentCvuId = null; renderIntro(); highlightActive(); };
+  nav.appendChild(introEl);
+
+  allChapters.forEach(ch => {
+    const group = document.createElement('div');
+    const head = document.createElement('div');
+    head.className = 'chapter-title';
+    head.innerHTML = `<span>${String(ch.chapter_num).padStart(2,'0')} · ${escapeHtml(ch.title)}</span>`;
+    const list = document.createElement('div');
+    list.style.display = 'none';
+    head.onclick = () => { list.style.display = list.style.display === 'none' ? 'block' : 'none'; };
+    group.appendChild(head);
+
+    (cvusByChapter[ch.chapter_num] || []).forEach(cvu => {
+      const item = document.createElement('div');
+      item.className = 'cvu-item';
+      item.id = 'link-' + cvu.cvu_id;
+      const check = document.createElement('span');
+      check.className = 'cvu-check' + (completedCvuIds.has(cvu.cvu_id) ? ' done' : '');
+      item.appendChild(check);
+      const label = document.createElement('span');
+      label.textContent = cvu.cvu_id.replace('CVU-','') + ' — ' + cvu.title;
+      item.appendChild(label);
+      item.onclick = () => selectCvu(cvu.cvu_id);
+      list.appendChild(item);
+    });
+    group.appendChild(list);
+    nav.appendChild(group);
+  });
+}
+
+function highlightActive() {
+  document.querySelectorAll('.cvu-item, .intro-link').forEach(el => el.classList.remove('active'));
+  if (currentCvuId) {
+    const el = document.getElementById('link-' + currentCvuId);
+    if (el) el.classList.add('active');
+  } else {
+    document.getElementById('link-intro').classList.add('active');
+  }
+}
+
+function renderIntro() {
+  document.getElementById('main-content').innerHTML = INTRO_HTML;
+  document.getElementById('main-content').scrollTop = 0;
+}
+
+function renderHome() {
+  currentCvuId = null;
+  let cards = '';
+  allChapters.forEach(ch => {
+    const first = (cvusByChapter[ch.chapter_num] || [])[0];
+    cards += `<div class="home-card" onclick="selectCvu('${first ? first.cvu_id : ''}')">
+      <div class="n">CHAPTER ${String(ch.chapter_num).padStart(2,'0')}</div>
+      <h3>${escapeHtml(ch.title)}</h3>
+      <p>${escapeHtml(ch.subtitle)} · ${(cvusByChapter[ch.chapter_num]||[]).length} CVUs</p>
+    </div>`;
+  });
+  document.getElementById('main-content').innerHTML = `
+    <div class="eyebrow">SAP Controls Analyst — No-Access Track</div>
+    <h1 class="title">How SAP Controls Really Work</h1>
+    <p class="subtitle">64 Control Verification Units across 15 chapters.</p>
+    <div class="home-grid">${cards}</div>`;
+  highlightActive();
+}
+
+function evidenceHtml(evidence) {
+  return Object.entries(evidence || {}).map(([tabName, tab]) => {
+    const headers = tab.headers.map(h => `<th>${escapeHtml(h)}</th>`).join('');
+    const rows = tab.rows.map(r => '<tr>' + r.map(c => `<td>${escapeHtml(c)}</td>`).join('') + '</tr>').join('');
+    return `<div class="exhibit">
+      <div class="exhibit-label">Exhibit — ${escapeHtml(tabName)}</div>
+      <div class="table-scroll"><table class="evidence-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table></div>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(s) {
+  return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function selectCvu(cvuId) {
+  if (!cvuId) return;
+  currentCvuId = cvuId;
+  const cvu = allCvus.find(c => c.cvu_id === cvuId);
+  if (!cvu) return;
+  const ch = allChapters.find(c => c.chapter_num === cvu.chapter_num);
+  const chapterCvus = cvusByChapter[cvu.chapter_num] || [];
+  const idxInChapter = chapterCvus.findIndex(c => c.cvu_id === cvuId);
+  const flat = allCvus;
+  const idx = flat.findIndex(c => c.cvu_id === cvuId);
+  const prevId = idx > 0 ? flat[idx - 1].cvu_id : null;
+  const nextId = idx < flat.length - 1 ? flat[idx + 1].cvu_id : null;
+  const isDone = completedCvuIds.has(cvuId);
+
+  const findingRows = ['Condition','Criteria','Cause','Effect','Recommendation'].map(k =>
+    `<div class="finding-row"><span class="finding-label">${k}</span><p>${escapeHtml((cvu.model_finding||{})[k] || '')}</p></div>`
+  ).join('');
+  const nonfindings = (cvu.nonfindings || []).map(n => `<li>${escapeHtml(n)}</li>`).join('');
+  const allDone = allCvus.every(c => completedCvuIds.has(c.cvu_id));
+
+  document.getElementById('main-content').innerHTML = `
+    <div class="eyebrow">Chapter ${ch ? ch.chapter_num : ''}: ${ch ? escapeHtml(ch.title) : ''} · ${ch ? escapeHtml(ch.subtitle) : ''}</div>
+    <h1 class="title">${cvuId}</h1>
+    <p class="subtitle">${escapeHtml(cvu.title)} · Offline Evidence-Based Analysis · No live SAP access required</p>
+
+    <section class="block"><h2>Purpose</h2><p>${escapeHtml(cvu.purpose)}</p></section>
+    <section class="block"><h2>Control Objective</h2><p>${escapeHtml(cvu.objective)}</p></section>
+    <section class="block"><h2>Evidence</h2>${evidenceHtml(cvu.evidence)}</section>
+    <section class="block"><h2>Baseline Standard</h2><p>${escapeHtml(cvu.baseline)}</p></section>
+    <section class="block">
+      <h2>Exercise</h2>
+      <p>${escapeHtml(cvu.exercise)}</p>
+      <textarea class="exercise-input" placeholder="Type your finding here before revealing the answer key..."></textarea>
+      <button class="reveal-btn" onclick="document.getElementById('ak-${cvuId}').classList.toggle('show')">Reveal Answer Key</button>
+      <div class="answer-key" id="ak-${cvuId}">
+        <div class="exception-callout"><strong>Exception identified:</strong> ${escapeHtml(cvu.exception_summary)}</div>
+        <h2 style="font-size:0.9rem;">Model Finding</h2>
+        ${findingRows}
+        <h2 style="font-size:0.9rem; margin-top:12px;">Non-Findings (for calibration)</h2>
+        <ul>${nonfindings}</ul>
+      </div>
+      <div class="mark-complete-row">
+        <button class="${isDone ? 'done' : ''}" onclick="markComplete('${cvuId}')" ${isDone ? 'disabled' : ''}>${isDone ? '✓ Completed' : 'Mark Complete'}</button>
+        <span class="status">${isDone ? 'Progress saved to your account' : ''}</span>
+      </div>
+    </section>
+
+    <div class="nav-buttons">
+      <button ${prevId ? '' : 'disabled'} onclick="${prevId ? `selectCvu('${prevId}')` : ''}">← Previous</button>
+      <button onclick="renderHome()">Chapter Map</button>
+      <button ${nextId ? '' : 'disabled'} onclick="${nextId ? `selectCvu('${nextId}')` : ''}">Next →</button>
+    </div>
+
+    ${allDone ? `
+    <div class="completion-banner">
+      <p style="margin:0;">🎓 You've completed all ${allCvus.length} CVUs. Ready for the hands-on half?</p>
+      <a href="https://tib-sap-controls-tutor.vercel.app/" target="_blank" rel="noopener">Continue to SAP Controls Mastery →</a>
+    </div>` : ''}
+  `;
+  document.getElementById('main-content').scrollTop = 0;
+  highlightActive();
+}
+
+checkExistingSession();
+</script>
+</body>
+</html>
